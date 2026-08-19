@@ -28,10 +28,16 @@ GitHub Actionsが1日6枠(10:00 / 12:00 / 15:00 / 18:00 / 21:00 / 00:00 JST)で�
 1. https://developers.facebook.com/ で開発者登録する
 2. 「アプリを作成」→ ユースケースで **Threads API** を選ぶ
 3. アプリ設定の「Threads API」で以下を登録する
-   - **リダイレクトURI**: 自分で受け取れるURLなら何でもよい(後述の手動フローでは
-     `https://localhost/` でも可)
-   - **プライバシーポリシーURL**: このリポジトリのGitHub Pagesで公開しているURL
-     (`https://dehi56.github.io/privacy-policy/`)
+   - **リダイレクトURI**: `https://dehi56.github.io/privacy-policy/`
+
+     Threads APIは `localhost` を受け付けません。入力しても
+     「フォームを保存できません」で弾かれます。実在するHTTPSのURLが必要なので、
+     このリポジトリのGitHub Pagesを使います(リポジトリの Settings → Pages で
+     Source を「Deploy from a branch」、Branch を `main` / `(root)` にして有効化)。
+
+     入力後は一度URLをクリックして確定させてから保存してください。入力しただけだと
+     保存に失敗することがあります。
+   - **プライバシーポリシーURL**: 同じく `https://dehi56.github.io/privacy-policy/`
 4. 「アプリロール」→「ロール」で、自分のThreadsアカウントを **Threadsテスター** として追加する
 5. Threadsアプリ側(スマホ)で 設定 → アカウント → ウェブサイトの権限 → 招待 から承認する
 
