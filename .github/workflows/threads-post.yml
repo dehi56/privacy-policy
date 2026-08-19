@@ -1,0 +1,41 @@
+name: Threads 自動投稿
+
+on:
+  schedule:
+    # cronはUTC。JSTは+9時間なので変換して指定する。
+    #   01:00 UTC = 10:00 JST
+    #   03:00 UTC = 12:00 JST
+    #   06:00 UTC = 15:00 JST
+    #   09:00 UTC = 18:00 JST
+    #   12:00 UTC = 21:00 JST
+    #   15:00 UTC = 00:00 JST(翌日)
+    # 6枠すべてで起動し、その枠に予定があるかはスクリプト側が posts.json で判定する。
+    - cron: "0 1,3,6,9,12,15 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "送信せず内容だけ確認する"
+        type: boolean
+        default: true
+      slot:
+        description: "テストしたい枠 (例 2026-08-20T10:00)。空なら現在時刻で判定"
+        type: string
+        default: ""
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 投稿
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+          SLOT_OVERRIDE: ${{ github.event_name == 'workflow_dispatch' && inputs.slot || '' }}
+        run: python threads/post_to_threads.py
