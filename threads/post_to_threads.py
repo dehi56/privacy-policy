@@ -28,6 +28,10 @@ POSTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "posts.jso
 PUBLISH_DELAY = 30
 # 親スレッド公開からリプライを付けるまでの待機時間(秒)
 REPLY_DELAY = 10
+# cron起動が定刻よりどれだけ遅れても同じスロットとみなすか(分)
+# GitHub Actionsのcronは混雑時に1時間前後遅れることがあるため、
+# 隣り合うスロットの最短間隔(2時間)の半分未満に収めつつ余裕を持たせる
+SLOT_WINDOW_MINUTES = 90
 
 
 def api_post(path, params):
@@ -70,8 +74,9 @@ def publish_text(user_id, token, text, reply_to_id=None):
 def current_slot():
     """いまのJST時刻を、スケジュールの (日付, 時刻) キーに丸める。
 
-    cronの起動は数分ずれることがあるので、直近のスロットに寄せる。
-    一致するスロットが無ければ None。
+    GitHub Actionsのcronは混雑時に1時間近く遅れることがあるため、
+    「定刻を過ぎていて、まだ SLOT_WINDOW_MINUTES 以内」の直近スロットを採用する
+    (未来のスロットには寄せない)。一致するスロットが無ければ None。
     """
     override = os.environ.get("SLOT_OVERRIDE")
     if override:
@@ -80,13 +85,17 @@ def current_slot():
 
     now = datetime.now(JST)
     slots = ["00:00", "10:00", "12:00", "15:00", "18:00", "21:00"]
+    best = None
     for slot in slots:
         hh, mm = (int(x) for x in slot.split(":"))
         target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
-        # 起動が定刻の前後20分以内なら、そのスロットとみなす
-        if abs((now - target).total_seconds()) <= 20 * 60:
-            return now.strftime("%Y-%m-%d"), slot
-    return None
+        elapsed = (now - target).total_seconds()
+        if 0 <= elapsed <= SLOT_WINDOW_MINUTES * 60:
+            if best is None or elapsed < best[0]:
+                best = (elapsed, slot)
+    if best is None:
+        return None
+    return now.strftime("%Y-%m-%d"), best[1]
 
 
 def main():
