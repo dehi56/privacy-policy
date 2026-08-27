@@ -9,7 +9,11 @@
 ### 方法A：シード固定 + プロンプト微変更（基本）
 
 シードを **`1926734438`** に固定したまま、下の各プロンプトで生成する。
-顔の骨格が保たれたまま、角度・表情・服装だけが変わる。
+
+> ⚠️ **「シード固定＝同じ顔」ではない。**
+> シードはノイズの初期値でしかなく、テキスト条件が変われば結果全体が動く。
+> 実際、ベース確定後に1行追加しただけで別人になった（[base-character.md](base-character.md) 参照）。
+> 方法Aで顔が離れたカットは、迷わず方法Bに切り替えること。
 
 - 「生成時に新しいシードを使用」の**チェックを外す**
 - バッチサイズ 1、回数 1（シード固定なのでバッチを増やしても同じ絵が出るだけ）
@@ -45,7 +49,7 @@ adult woman, mature facial features, defined jawline,
 short bob haircut with blunt bangs, dark brown hair,
 almond-shaped dark brown eyes, natural double eyelids,
 light warm-toned skin with natural texture and visible pores,
-natural matte skin, minimal makeup, small mole under left eye,
+natural matte skin, minimal makeup,
 ```
 
 **Negative（全カット共通・固定）:**
@@ -148,7 +152,7 @@ deformed hands, extra fingers, watermark, text, logo
 
 生成したら、1枚ずつこの4項目で判定する。**1つでも×なら捨てる。**
 
-- [ ] **同一人物に見えるか** ← 最重要。ほくろの位置で判定できる
+- [ ] **同一人物に見えるか** ← 最重要。輪郭・目の間隔・前髪の分かれ方で判定する
 - [ ] 顔が潰れていない・ぼやけていない
 - [ ] 手・指・耳・首が破綻していない
 - [ ] 髪の生え際・毛先が溶けていない
@@ -197,7 +201,6 @@ mio_035.txt →  mio_dt1, a woman, full body, outdoor park, casual outfit
 
 ## 進捗
 
-- [ ] ほくろ追加版でベースを再生成
 - [ ] A. 正面顔 8枚
 - [ ] B. 斜め45度 8枚
 - [ ] C. 横顔 4枚
