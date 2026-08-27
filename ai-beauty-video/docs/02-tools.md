@@ -29,6 +29,7 @@
 | Stable Diffusion WebUI (A1111) | 老舗。UIは直感的だが動画は弱い | https://github.com/AUTOMATIC1111/stable-diffusion-webui |
 | SD WebUI Forge | A1111の高速フォーク。低VRAMに強い | https://github.com/lllyasviel/stable-diffusion-webui-forge |
 | Fooocus | 設定を隠した簡単UI。静止画のお試し用 | https://github.com/lllyasviel/Fooocus |
+| **Draw Things** ★Mac | Mac/iOSアプリ。セットアップ不要でWan 2.2が動く。**Macでのお試しはこれ**（クローズドソース） | https://drawthings.ai/ |
 | InvokeAI | 商用利用を意識した統合環境 | https://github.com/invoke-ai/InvokeAI |
 | SwarmUI | ComfyUIをバックエンドに使う扱いやすいUI | https://github.com/mcmonkeyprojects/SwarmUI |
 

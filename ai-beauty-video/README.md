@@ -14,7 +14,7 @@ AI生成のオリジナル人物（バーチャルモデル）による短尺動
 |---|---|
 | MacとWindows、どっち？ | **Windows + NVIDIA GPU（VRAM 16GB以上、できれば24GB）**。動画生成は事実上CUDA一択 |
 | ツールはGitHubにある？ | **ある。ほぼ全部オープンソース**。中心は ComfyUI + Wan 2.2。詳細は [docs/02-tools.md](docs/02-tools.md) |
-| Macは無理？ | 画像生成・編集・投稿運用はMacで快適。**動画生成だけが遅い/未対応**。Mac作業 + Windows生成機の2台構成が実は最適解 |
+| Macは無理？ | **お試しなら十分いける。Draw Things（無料アプリ）でWan 2.2が動く。**詰まるのは量産フェーズ。買うかどうかはそこで判断すればOK |
 
 詳細な比較 → [docs/01-hardware.md](docs/01-hardware.md)
 
@@ -67,6 +67,17 @@ ai-beauty-video/
 
 ## 4. スタート手順
 
+### Macでお試しする場合（最短30分・無料）
+
+1. Mac App Store で **Draw Things** を入れる
+2. モデル一覧から **Wan 2.2 5B** をダウンロード
+3. 手持ちの画像を1枚読み込んで Image-to-Video
+4. プロンプトは1行だけ: `The camera slowly pushes in toward her face, she blinks slowly and smiles softly`
+
+→ 詳細は [docs/01-hardware.md](docs/01-hardware.md#macだけで完結させたい場合--draw-things)
+
+### NVIDIA GPU機でセットアップする場合
+
 ```bash
 # 1. 環境チェック（GPU / VRAM / PyTorch）
 python ai-beauty-video/scripts/check-env.py
@@ -84,7 +95,7 @@ bash ai-beauty-video/scripts/setup-comfyui.sh
 
 | 日程 | やること | ゴール |
 |---|---|---|
-| Day 1-2 | 環境構築（ComfyUI + Wan 2.2 5B） | とにかく5秒動画を1本出す |
+| Day 1-2 | 環境構築（Mac: Draw Things / GPU機: ComfyUI + Wan 2.2 5B） | とにかく5秒動画を1本出す |
 | Day 3-5 | キャラ設計 + 基準画像 | 「この子でいく」という1枚を決める |
 | Day 6-8 | データセット作成 + LoRA学習 | 同じ顔が10枚連続で出る |
 | Day 9-11 | i2vのプロンプト詰め | 破綻しないモーションの型を3つ持つ |

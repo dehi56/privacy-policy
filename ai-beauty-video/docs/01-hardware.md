@@ -74,10 +74,39 @@ python main.py --listen 0.0.0.0 --port 8188
 # → Mac側のブラウザで http://<WindowsのIP>:8188
 ```
 
-### Macだけで完結させたい場合
-- **Draw Things**（Mac/iOSアプリ、Apple Silicon最適化）— 画像生成は快適
-- ComfyUI も MPS で動作（画像生成なら実用）
-- ただし **動画生成は諦めるか、クラウドGPUに投げる**のが精神衛生上よいです
+### Macだけで完結させたい場合 — Draw Things
+
+**お試しならこれが最短です。** ターミナル操作もPython環境構築も不要。
+
+- **Draw Things**（Mac App Store・無料）https://drawthings.ai/
+- Wan 2.2 5B の t2v / i2v に対応（Wan 2.1 / HunyuanVideo / SkyReels / SVD も選べる）
+- Apple Silicon 最適化済みで、**Mac上ではComfyUIより約40%高速**という比較結果
+- 720pまで対応
+
+| 項目 | 要件 |
+|---|---|
+| チップ | M2以降推奨（M1でも画像生成は可、動画は厳しい） |
+| メモリ | 16GBが下限 / 24GB以上で快適 / 48GBならBF16で高品質 |
+
+**手順**: アプリを入れる → モデル一覧から Wan 2.2 5B をダウンロード → 画像を読み込んで Image-to-Video → モーションプロンプトを1行入れて生成。
+
+### MacでComfyUIを使う場合
+
+MPS（Metal）でGPUアクセラレーションは効きます。LTX-Video なら M4 Pro で 768×512・97フレームが**3分半程度**。
+
+ただし現状の制約:
+- `torch.compile` 非対応（高速化の恩恵が受けられない）
+- FP8モデルは回避策が必要
+- Wan 2.2 / LTX 2.3 は Mac ネイティブの Metal 最適化が未完了
+- LoRA学習は実質困難
+
+**お試しは Draw Things、本格化するなら ComfyUI**、という順番が素直です。
+
+### Macの限界がどこに来るか
+
+Macで詰まるのは品質ではなく**量産フェーズ**です。「試す・キャラを固める・画像を作る」までは十分実用的で、
+1日10本回そうとした時点で待ち時間が効いてきます。**そこまで来てからGPUかクラウドを考えれば十分**で、
+最初からWindows機を買う必要はありません。
 
 ---
 
@@ -115,3 +144,7 @@ python main.py --listen 0.0.0.0 --port 8188
 - [RTX 5090 vs Mac Studio M4 Max for AI — 2026 Compared](https://www.compute-market.com/blog/rtx-5090-vs-mac-studio-m4-max-local-ai-2026)
 - [Deploy Wan 2.1/2.2: GPU Requirements and ComfyUI Setup — Spheron](https://www.spheron.network/blog/deploy-wan-2-1-ai-video-generation-gpu-setup/)
 - [ComfyUI 動画生成ガイド【2026年版】— PERSC JOURNAL](https://journal.persc.jp/comfyui-video-guide/)
+- [Video Generation Basics — Draw Things WIKI](https://wiki.drawthings.ai/wiki/Video_Generation_Basics)
+- [Draw Things on Mac 2026: Tutorial + 40% Faster than ComfyUI](https://www.heyuan110.com/posts/ai/2026-02-15-draw-things-ultimate-guide/)
+- [LTX-Video on ComfyUI: local AI video on Apple Silicon](https://stridenote.net/ltx-video-comfyui-apple-silicon/)
+- [Working Apple Silicon / macOS workaround for ComfyUI FP8 MPS — ComfyUI Discussion #13273](https://github.com/Comfy-Org/ComfyUI/discussions/13273)
