@@ -6,7 +6,6 @@ posts.json のスケジュールを見て、いま実行すべき投稿がある
 
 環境変数:
   THREADS_ACCESS_TOKEN  長期アクセストークン(必須)
-  THREADS_USER_ID       ThreadsのユーザーID(必須)
   DRY_RUN               "1" なら送信せず内容だけ表示
   SLOT_OVERRIDE         "2026-08-20T10:00" 形式。指定時刻の投稿を強制実行(手動テスト用)
 """
@@ -47,8 +46,13 @@ def api_post(path, params):
         raise RuntimeError(f"POST {path} failed ({e.code}): {detail}") from e
 
 
-def publish_text(user_id, token, text, reply_to_id=None):
-    """テキストを1件公開し、公開後のIDを返す。"""
+def publish_text(token, text, reply_to_id=None):
+    """テキストを1件公開し、公開後のIDを返す。
+
+    エンドポイントには数値のユーザーIDではなく "me" を使う。
+    数値IDを指定すると、正しいIDであっても
+    「Object with ID ... does not exist」で拒否される。
+    """
     params = {
         "media_type": "TEXT",
         "text": text,
@@ -57,14 +61,14 @@ def publish_text(user_id, token, text, reply_to_id=None):
     if reply_to_id:
         params["reply_to_id"] = reply_to_id
 
-    container = api_post(f"{user_id}/threads", params)
+    container = api_post("me/threads", params)
     creation_id = container["id"]
     print(f"  container created: {creation_id}")
 
     time.sleep(PUBLISH_DELAY)
 
     published = api_post(
-        f"{user_id}/threads_publish",
+        "me/threads_publish",
         {"creation_id": creation_id, "access_token": token},
     )
     print(f"  published: {published['id']}")
@@ -100,11 +104,10 @@ def current_slot():
 
 def main():
     token = os.environ.get("THREADS_ACCESS_TOKEN")
-    user_id = os.environ.get("THREADS_USER_ID")
     dry_run = os.environ.get("DRY_RUN") == "1"
 
-    if not dry_run and (not token or not user_id):
-        sys.exit("THREADS_ACCESS_TOKEN と THREADS_USER_ID を設定してください")
+    if not dry_run and not token:
+        sys.exit("THREADS_ACCESS_TOKEN を設定してください")
 
     slot = current_slot()
     if slot is None:
@@ -133,12 +136,12 @@ def main():
         print(f"[コメント欄 {len(post['comment'])}字]\n{post['comment']}")
         return
 
-    parent_id = publish_text(user_id, token, post["body"])
+    parent_id = publish_text(token, post["body"])
 
     time.sleep(REPLY_DELAY)
 
     print("  コメント欄をリプライとして投稿します")
-    publish_text(user_id, token, post["comment"], reply_to_id=parent_id)
+    publish_text(token, post["comment"], reply_to_id=parent_id)
 
     print(f"完了: No.{entry['post_id']}")
 

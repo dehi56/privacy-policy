@@ -73,7 +73,7 @@ curl -X POST https://graph.threads.net/oauth/access_token \
   -d code={CODE}
 ```
 
-レスポンスの `access_token` と `user_id` を控える。
+レスポンスの `access_token` を控える(この時点ではまだ短期トークンです)。
 
 ### 3-3. 長期トークン(60日)に交換する
 
@@ -95,7 +95,27 @@ curl "https://graph.threads.net/access_token\
 curl "https://graph.threads.net/v1.0/me?fields=id,username&access_token={LONG_LIVED_TOKEN}"
 ```
 
-`id` と `username` が返れば成功です。この `id` が `THREADS_USER_ID` です。
+`id` と `username` が返れば成功です。
+
+> **投稿エンドポイントには数値のユーザーIDではなく `me` を使ってください。**
+> ここで返ってくる正しい `id` を指定しても、投稿(POST)だけは
+> 「Object with ID ... does not exist」で拒否されます。読み取りは通るので
+> 紛らわしいですが、`me/threads` と `me/threads_publish` を使えば通ります。
+
+投稿まで通るか確認するには、実際に1件送ってみるのが確実です。
+
+```bash
+# コンテナを作る
+curl -X POST "https://graph.threads.net/v1.0/me/threads" \
+  --data-urlencode "media_type=TEXT" \
+  --data-urlencode "text=接続テストです" \
+  --data-urlencode "access_token={LONG_LIVED_TOKEN}"
+
+# 30秒ほど待ってから、返ってきた id で公開する
+curl -X POST "https://graph.threads.net/v1.0/me/threads_publish" \
+  --data-urlencode "creation_id={上で返ってきたid}" \
+  --data-urlencode "access_token={LONG_LIVED_TOKEN}"
+```
 
 ---
 
@@ -106,7 +126,6 @@ curl "https://graph.threads.net/v1.0/me?fields=id,username&access_token={LONG_LI
 | Secret名 | 値 |
 | --- | --- |
 | `THREADS_ACCESS_TOKEN` | 3-3で取得した長期トークン |
-| `THREADS_USER_ID` | 3-4で確認した `id` |
 
 トークンは絶対にコードに直接書かないでください。Secretsに入れればログにも出ません。
 

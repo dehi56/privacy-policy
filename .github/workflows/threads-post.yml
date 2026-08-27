@@ -35,7 +35,6 @@ jobs:
       - name: 投稿
         env:
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
-          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
           SLOT_OVERRIDE: ${{ github.event_name == 'workflow_dispatch' && inputs.slot || '' }}
         run: python threads/post_to_threads.py
