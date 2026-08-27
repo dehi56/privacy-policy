@@ -1,6 +1,8 @@
-# 候補001（基準画像）
+# 候補001（不採用）
 
-初回生成。素の状態でのベースライン。
+> **不採用。** 欧米顔だったため方向転換した。確定キャラは
+> [base-character.md](base-character.md) を参照。
+> 初回生成のベースラインとして記録のみ残す。
 
 ![candidate-001](../../assets/character/candidate-001.png)
 > 画像は `assets/` 配下（gitignore対象）。手元で保管すること。
