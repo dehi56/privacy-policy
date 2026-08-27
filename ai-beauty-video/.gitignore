@@ -1,0 +1,28 @@
+# 生成物・モデル（リポジトリにコミットしない）
+assets/**
+!assets/.gitkeep
+
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.gguf
+
+*.mp4
+*.mov
+*.webm
+*.png
+*.jpg
+*.jpeg
+*.webp
+
+# 作業ディレクトリ
+ComfyUI/
+outputs/
+datasets/
+venv/
+__pycache__/
+
+# 認証情報
+.env
+*.key
