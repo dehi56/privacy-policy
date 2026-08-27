@@ -4,8 +4,8 @@
 
 | 項目 | 値 |
 |---|---|
-| 名前 | （未定） |
-| トリガーワード | （未定 / LoRA学習時に確定） |
+| 名前 | **澪（みお）** |
+| トリガーワード | **`mio_dt1`** |
 | 確定日 | 2026-08-27 |
 | 再現テスト | ✅ 済（シード指定で同一の顔を再現できることを確認） |
 | 基準画像 | `assets/character/base.png` |
@@ -75,7 +75,7 @@ deformed hands, extra fingers, watermark, text, logo
 | 顔立ち | 輪郭がはっきりした顎。成人らしい骨格 |
 | 肌 | ライトウォームトーン、マットな質感 |
 | 服（基準） | 白のコットンブラウス |
-| 識別用の特徴 | **未設定** → 次工程で `small mole under left eye` を追加 |
+| 識別用の特徴 | 左目の下のほくろ（`small mole under left eye`） |
 
 ---
 
@@ -98,7 +98,7 @@ deformed hands, extra fingers, watermark, text, logo
 ## 次工程
 
 - [ ] ほくろ追加版の作成（シード固定のまま `small mole under left eye` を追加）
-- [ ] 名前・トリガーワードの決定
+- [x] 名前・トリガーワードの決定（澪 / `mio_dt1`）
 - [ ] データセット作成（20〜40枚）
 - [ ] LoRA学習（3070 Ti機 or クラウド）
 - [ ] i2vで動画化
