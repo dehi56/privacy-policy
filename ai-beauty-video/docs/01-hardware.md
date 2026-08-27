@@ -138,15 +138,66 @@ SDXLなら25〜40秒級で、こちらは十分軽快。
 
 720p 5秒を最初から狙わないこと。まず480p・2秒で「出る」ことを確認する。
 
+### 実機プロファイル: RTX 3070 Ti / 8GB
+
+動画量産機。8GBは本来「下限未満」だが、GGUF量子化前提なら実用になる。
+
+**実測の目安**: GGUF量子化 + Lightx2v（高速化LoRA）で、
+**480×480・81フレーム（5秒）が約3分**（23秒/iteration）。
+3分/本なら夜間バッチで20本は現実的。
+
+| 項目 | 現実 |
+|---|---|
+| 解像度 | **480pが上限**。720pは厳しい |
+| モデル | Wan 2.2 **5B の GGUF量子化**（Q4〜Q5）。14Bは非現実的 |
+| 生成中 | GPU 100%でマシンが完全に塞がる |
+| システムRAM | **32GB推奨**。text encoderをCPUに逃がすため。16GBだとスワップして厳しい |
+
+**必須設定**:
+- ComfyUI Settings → Server config → VRAM management mode: `lowvram`（または auto）
+- text encoder と VAE は CPU に配置
+- [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) を導入し、GGUF版モデルを使う
+- Lightx2v 系の高速化LoRAを併用（ステップ数を大幅に削減できる）
+
+> Ampere世代のためFP8ネイティブ非対応。FP8モデルではなく**GGUF（INT4/Q4〜Q5）経路**を使うこと。
+
+### 480pで足りるのか → 足りる
+
+低VRAM環境の定石は「低解像度で生成してからアップスケール」。
+
+```
+Wan 2.2 5B で 480p 生成（約3分）
+   ↓ CodeFormer で顔補正
+   ↓ Real-ESRGAN で 1080p にアップスケール
+   ↓ Practical-RIFE で 32fps に補間
+SNS投稿品質の縦型動画
+```
+
+最初から720pを狙うより**速くて品質も安定する**。8GB環境ではこちらを標準ワークフローとする。
+
+### アップグレードの判断
+
+720p / 14B が必要になった時点で検討する。それまでは不要。
+
+| 候補 | VRAM | 評価 |
+|---|---|---|
+| **中古 RTX 3090** | 24GB | ★本命。$800〜1,300。24GBの最安ライン。帯域936GB/sで量子化モデルに強い |
+| RTX 5060 Ti | 16GB | 画像生成なら最良のコスパだが、**動画には16GBでは足りない場面が出る** |
+| RTX 4090 / 5090 | 24〜32GB | 予算があるなら。14Bを量子化なしで回せる |
+
+Wan 2.2 14B は FP8 でも 22〜26GB を要求するため、**動画をやるなら24GBが実質的な基準線**になる。
+
 ### この構成での役割分担
 
 ```
-M4 Air（手元）                      クラウドGPU（必要な時だけ）
-├─ キャラ設計・基準画像 ★最重要      ├─ LoRA学習（1回 $2〜3程度）
-├─ データセット作り                  └─ 動画の量産（1本 $0.1未満）
-├─ キーフレーム生成
+M4 Air 24GB（手元）      RTX 3070 Ti 8GB（量産）    クラウド（たまに）
+├─ キャラ設計 ★最重要     ├─ 動画量産 480p           ├─ LoRA学習（$2〜3/回）
+├─ 基準画像・FLUX         ├─ アップスケール・補間     └─ 本気カットの720p/14B
+├─ キーフレーム生成       └─ 夜間バッチ
 └─ 編集・投稿・分析
 ```
+
+**この構成なら追加の買い物なしで全工程が回る。**
 
 動画の一貫性は**入力画像の顔で決まる**（→ [04-character.md](04-character.md)）。
 つまり最重要工程は画像側にあり、そこはM4 Airで完結する。
@@ -198,3 +249,6 @@ Macで詰まるのは品質ではなく**量産フェーズ**です。「試す�
 - [Draw Things on Mac 2026: Tutorial + 40% Faster than ComfyUI](https://www.heyuan110.com/posts/ai/2026-02-15-draw-things-ultimate-guide/)
 - [LTX-Video on ComfyUI: local AI video on Apple Silicon](https://stridenote.net/ltx-video-comfyui-apple-silicon/)
 - [Working Apple Silicon / macOS workaround for ComfyUI FP8 MPS — ComfyUI Discussion #13273](https://github.com/Comfy-Org/ComfyUI/discussions/13273)
+- [ComfyUI WAN 2.2 Image to Video on 8GB VRAM (2026) — Runflow](https://www.runflow.io/blog/comfyui-wan-2-2-image-to-video)
+- [Wan 2.2 GGUF: Low-VRAM ComfyUI Guide](https://wan2-7.io/blog/wan-2-2-gguf/)
+- [Used RTX 3090 vs RTX 5060 Ti for Local AI — 2026 Prices](https://www.compute-market.com/blog/used-rtx-3090-vs-rtx-5060-ti-local-ai-2026)
