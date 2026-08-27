@@ -28,9 +28,12 @@ PUBLISH_DELAY = 30
 # 親スレッド公開からリプライを付けるまでの待機時間(秒)
 REPLY_DELAY = 10
 # cron起動が定刻よりどれだけ遅れても同じスロットとみなすか(分)
-# GitHub Actionsのcronは混雑時に1時間前後遅れることがあるため、
-# 隣り合うスロットの最短間隔(2時間)の半分未満に収めつつ余裕を持たせる
+# GitHub Actionsのcronは混雑時に1時間前後遅れるうえ、起動自体が破棄されることもある。
+# 30分おきの起動と組み合わせて、1スロットにつき3回の機会を確保する。
+# 隣り合うスロットの最短間隔(2時間)より短くして、別スロットに寄らないようにする。
 SLOT_WINDOW_MINUTES = 90
+# 二重投稿チェックで遡る投稿数。1日6本なので4日分をカバーする
+RECENT_POSTS_LIMIT = 25
 
 
 def api_post(path, params):
@@ -44,6 +47,39 @@ def api_post(path, params):
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")
         raise RuntimeError(f"POST {path} failed ({e.code}): {detail}") from e
+
+
+def api_get(path, params):
+    """Threads Graph APIにGETし、JSONを返す。"""
+    url = f"{API_BASE}/{path}?" + urllib.parse.urlencode(params)
+    try:
+        with urllib.request.urlopen(url, timeout=30) as res:
+            return json.loads(res.read().decode())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="replace")
+        raise RuntimeError(f"GET {path} failed ({e.code}): {detail}") from e
+
+
+def already_posted(token, body):
+    """同じ本文が直近の投稿に既にあるか調べる。
+
+    cronの取りこぼしに備えて起動回数を増やしている都合上、
+    ひとつのスロットを複数の起動が拾いうる。実際に送る前にここで弾く。
+
+    APIの照合自体に失敗した場合は例外を送出し、送信前に中断する。
+    重複投稿より、1回見送って次の起動に任せる方が安全なため。
+    """
+    target = "".join(body.split())
+    res = api_get("me/threads", {
+        "fields": "text",
+        "limit": RECENT_POSTS_LIMIT,
+        "access_token": token,
+    })
+    for item in res.get("data", []):
+        text = item.get("text")
+        if text and "".join(text.split()) == target:
+            return True
+    return False
 
 
 def publish_text(token, text, reply_to_id=None):
@@ -134,6 +170,10 @@ def main():
         print("\n--- DRY RUN (送信していません) ---")
         print(f"[本文 {len(post['body'])}字]\n{post['body']}\n")
         print(f"[コメント欄 {len(post['comment'])}字]\n{post['comment']}")
+        return
+
+    if already_posted(token, post["body"]):
+        print(f"  No.{entry['post_id']} は投稿済みです。二重投稿を避けて終了します。")
         return
 
     parent_id = publish_text(token, post["body"])
