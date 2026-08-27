@@ -30,14 +30,16 @@
 
 ---
 
-## 基準画像プロンプト（雛形）
+## 基準画像プロンプト（日本人ベース・雛形）
 
 ```
-photorealistic portrait of a young woman, early 20s,
-oval face, high cheekbones, small nose, almond-shaped dark brown eyes,
-straight soft eyebrows, small mole under left eye,
-dark brown straight hair to collarbone, center part,
-fair skin with natural texture and visible pores,
+photorealistic portrait of a young Japanese woman, early 20s,
+east asian features, slim oval face, soft jawline,
+almond-shaped dark brown eyes with natural double eyelids,
+small straight nose, gentle mouth,
+long straight black hair to collarbone, center part,
+light warm-toned skin with natural texture and visible pores,
+natural minimal makeup, small mole under left eye,
 neutral expression, looking at camera,
 plain light gray background, soft diffused studio lighting,
 shot on 85mm lens, f/2.0, shallow depth of field,
@@ -46,10 +48,29 @@ high quality, sharp focus on eyes
 
 ### ネガティブプロンプト
 ```
+caucasian, western face, deep set eyes,
 plastic skin, airbrushed, doll-like, cgi, 3d render, illustration, anime,
 deformed hands, extra fingers, watermark, text, logo,
 oversaturated, heavy makeup, celebrity, child, teenager
 ```
+
+### アジア系の顔を出すコツ
+
+SDXL系（Juggernaut XL X 含む）は**放っておくと欧米顔に戻る**。
+`asian` の一語だけでは無国籍顔か韓国アイドル風に寄るため、
+**国籍 + 具体的な骨格・目の形**をセットで指定し、
+ネガティブで `caucasian, western face, deep set eyes` を押し返すこと。
+
+| 出た結果 | 対処 |
+|---|---|
+| 韓国アイドル風に寄りすぎ | ネガティブに `korean idol, k-pop, heavy makeup` を追加 |
+| 中華系に寄る | Positive に `Japanese, tokyo` を強調、`chinese` をネガティブへ |
+| 幼く見えすぎる | `early 20s` → `mid 20s`、`mature features` を追加 |
+| 目を一重にしたい | `natural double eyelids` → `monolid eyes` |
+| 肌が白すぎる | `light warm-toned skin` → `warm beige skin tone` |
+
+プロンプトで足りない場合は、アジア系特化のコミュニティモデル
+（モデル検索欄で `asian` / `BRA` / `majic` などを検索）への切り替えを検討する。
 
 ---
 
