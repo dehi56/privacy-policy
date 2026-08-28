@@ -115,10 +115,17 @@ def find_posted(token, body, comment):
     comment_id = seen.get(normalized(comment))
 
     if body_id and not comment_id:
-        replies = api_get(f"{body_id}/replies", {
-            "fields": "id,text",
-            "access_token": token,
-        }).get("data", [])
+        # リプライ一覧の取得には threads_manage_replies が要る。未付与だと
+        # 「Application does not have permission」が返るので、その場合は
+        # 判定を諦めて先に進む。ここで落とすと本文の投稿まで巻き添えになる。
+        try:
+            replies = api_get(f"{body_id}/replies", {
+                "fields": "id,text",
+                "access_token": token,
+            }).get("data", [])
+        except RuntimeError as e:
+            print(f"  リプライ一覧を取得できませんでした(権限不足の可能性): {e}")
+            return body_id, None
         print(f"  本文のリプライ {len(replies)}件を確認します")
         for item in replies:
             text = item.get("text")
@@ -233,7 +240,16 @@ def main():
         time.sleep(REPLY_DELAY)
 
     print("  コメント欄をリプライとして投稿します")
-    publish_text(token, post["comment"], reply_to_id=parent_id)
+    try:
+        publish_text(token, post["comment"], reply_to_id=parent_id)
+    except RuntimeError as e:
+        # 本文は既に世に出ているので、ここで落としても取り消せない。
+        # コメント欄が付かなかったことを明示して、異常終了で気づけるようにする。
+        sys.exit(
+            f"本文(No.{entry['post_id']})は投稿できましたが、コメント欄が付けられませんでした。\n"
+            f"リプライ作成には threads_manage_replies が要る可能性があります。\n"
+            f"{e}"
+        )
 
     print(f"完了: No.{entry['post_id']}")
 
