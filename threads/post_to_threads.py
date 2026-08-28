@@ -81,12 +81,21 @@ def api_get(path, params):
         raise RuntimeError(f"GET {path} failed ({e.code}): {detail}") from e
 
 
-def find_posted(token, texts):
-    """与えたテキストが直近の投稿に既にあるかを調べ、あればそのIDを返す。
+def normalized(text):
+    """空白と改行の差を無視して比較できる形にする。"""
+    return "".join(text.split())
+
+
+def find_posted(token, body, comment):
+    """本文とコメント欄がすでに投稿済みかを調べ、あればそれぞれのIDを返す。
 
     起動回数を増やしている都合上、ひとつのスロットを複数の起動が拾いうるので、
     送る前にここで弾く。本文とコメント欄を別々に見るのは、本文だけ通って
     コメント欄が失敗した状態から再開できるようにするため。
+
+    コメント欄は本文へのリプライなので、一覧(me/threads)には現れないことがある。
+    現れないまま「未投稿」と判定すると、送信済みのリプライを何度も送り直して
+    しまうため、本文が見つかったらそのリプライ一覧も必ず確認する。
 
     APIの照合自体に失敗した場合は例外を送出し、送信前に中断する。
     重複投稿より、1回見送って次の起動に任せる方が安全なため。
@@ -100,8 +109,24 @@ def find_posted(token, texts):
     for item in res.get("data", []):
         text = item.get("text")
         if text:
-            seen.setdefault("".join(text.split()), item.get("id"))
-    return [seen.get("".join(t.split())) for t in texts]
+            seen.setdefault(normalized(text), item.get("id"))
+
+    body_id = seen.get(normalized(body))
+    comment_id = seen.get(normalized(comment))
+
+    if body_id and not comment_id:
+        replies = api_get(f"{body_id}/replies", {
+            "fields": "id,text",
+            "access_token": token,
+        }).get("data", [])
+        print(f"  本文のリプライ {len(replies)}件を確認します")
+        for item in replies:
+            text = item.get("text")
+            if text and normalized(text) == normalized(comment):
+                comment_id = item.get("id")
+                break
+
+    return body_id, comment_id
 
 
 def publish_text(token, text, reply_to_id=None):
@@ -194,7 +219,7 @@ def main():
         print(f"[コメント欄 {len(post['comment'])}字]\n{post['comment']}")
         return
 
-    parent_id, comment_id = find_posted(token, [post["body"], post["comment"]])
+    parent_id, comment_id = find_posted(token, post["body"], post["comment"])
 
     if parent_id and comment_id:
         print(f"  No.{entry['post_id']} は投稿済みです。二重投稿を避けて終了します。")
