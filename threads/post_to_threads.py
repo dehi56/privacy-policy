@@ -25,8 +25,23 @@ POSTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "posts.jso
 
 # コンテナ作成から公開までMetaが推奨する待機時間(秒)
 PUBLISH_DELAY = 30
+
+# 本文とコメント欄を1つの投稿にまとめて出すか。
+#
+# 当初はコメント欄を本文への自己リプとしてぶら下げる設計だったが、
+# リプライの作成が {"code":1,"message":"An unknown error occurred"} で
+# 失敗し続ける(5時間・3回の実行・2つの親投稿にわたり計9回)。
+# 本文の投稿は同じトークンで問題なく通るので、リプライ固有の問題。
+#
+# コメント欄が落ちると内容の核心が届かないため、1本にまとめて確実に出す。
+# 全30本が最長276字で、Threadsの上限500字に収まることを確認済み。
+#
+# Metaのリプライ作成が直ったらFalseに戻せば、元のスレッド構成に復帰する。
+COMBINE_BODY_AND_COMMENT = True
+# 本文とコメント欄の区切り(まとめて出すとき)
+COMBINE_SEPARATOR = "\n\n"
 # 親スレッド公開からリプライを付けるまでの待機時間(秒)
-# 10秒では公開直後にリプライを作ろうとして500が返ることがあったため延ばした
+# COMBINE_BODY_AND_COMMENT を False に戻したときだけ使う
 REPLY_DELAY = 30
 # cron起動が定刻よりどれだけ遅れても同じスロットとみなすか(分)
 # GitHub Actionsのcronは混雑時に1時間前後遅れるうえ、起動自体が破棄されることもある。
@@ -86,16 +101,11 @@ def normalized(text):
     return "".join(text.split())
 
 
-def find_posted(token, body, comment):
-    """本文とコメント欄がすでに投稿済みかを調べ、あればそれぞれのIDを返す。
+def recent_posts(token):
+    """直近の投稿を {正規化したテキスト: ID} で返す。
 
     起動回数を増やしている都合上、ひとつのスロットを複数の起動が拾いうるので、
-    送る前にここで弾く。本文とコメント欄を別々に見るのは、本文だけ通って
-    コメント欄が失敗した状態から再開できるようにするため。
-
-    コメント欄は本文へのリプライなので、一覧(me/threads)には現れないことがある。
-    現れないまま「未投稿」と判定すると、送信済みのリプライを何度も送り直して
-    しまうため、本文が見つかったらそのリプライ一覧も必ず確認する。
+    送る前にこれで既出かどうかを見る。
 
     APIの照合自体に失敗した場合は例外を送出し、送信前に中断する。
     重複投稿より、1回見送って次の起動に任せる方が安全なため。
@@ -110,7 +120,20 @@ def find_posted(token, body, comment):
         text = item.get("text")
         if text:
             seen.setdefault(normalized(text), item.get("id"))
+    return seen
 
+
+def find_posted(token, body, comment):
+    """本文とコメント欄がすでに投稿済みかを調べ、あればそれぞれのIDを返す。
+
+    本文とコメント欄を別々に見るのは、本文だけ通ってコメント欄が失敗した
+    状態から再開できるようにするため。
+
+    コメント欄は本文へのリプライなので、一覧(me/threads)には現れないことがある。
+    現れないまま「未投稿」と判定すると、送信済みのリプライを何度も送り直して
+    しまうため、本文が見つかったらそのリプライ一覧も必ず確認する。
+    """
+    seen = recent_posts(token)
     body_id = seen.get(normalized(body))
     comment_id = seen.get(normalized(comment))
 
@@ -220,6 +243,28 @@ def main():
     print(f"{date} {time_str} JST — No.{entry['post_id']} ({post['type']}) を投稿します")
     print(f"  本文: {post['body'][:40]}…")
 
+    if COMBINE_BODY_AND_COMMENT:
+        whole = post["body"] + COMBINE_SEPARATOR + post["comment"]
+
+        if dry_run:
+            print("\n--- DRY RUN (送信していません) ---")
+            print(f"[1投稿 {len(whole)}字]\n{whole}")
+            return
+
+        seen = recent_posts(token)
+        if normalized(whole) in seen:
+            print(f"  No.{entry['post_id']} は投稿済みです。二重投稿を避けて終了します。")
+            return
+        if normalized(post["body"]) in seen:
+            # まとめ方式に切り替える前に、本文だけ投稿された枠。まとめて出し直すと
+            # 本文が二重に出るので見送る(この枠のコメント欄は諦める)。
+            print(f"  No.{entry['post_id']} は本文だけ投稿済みです。二重投稿を避けて終了します。")
+            return
+
+        publish_text(token, whole)
+        print(f"完了: No.{entry['post_id']}")
+        return
+
     if dry_run:
         print("\n--- DRY RUN (送信していません) ---")
         print(f"[本文 {len(post['body'])}字]\n{post['body']}\n")
@@ -247,7 +292,6 @@ def main():
         # コメント欄が付かなかったことを明示して、異常終了で気づけるようにする。
         sys.exit(
             f"本文(No.{entry['post_id']})は投稿できましたが、コメント欄が付けられませんでした。\n"
-            f"リプライ作成には threads_manage_replies が要る可能性があります。\n"
             f"{e}"
         )
 
