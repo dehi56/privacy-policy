@@ -166,6 +166,63 @@ deformed hands, extra fingers, watermark, text, logo
 
 ---
 
+## 4-B. 角度カットは別プロンプトを使う（2026-08-27 検証済み）
+
+正面用のプロンプトに `head turned 45 degrees` を足しても**角度は一切効かない。**
+正面を誘導する語が強すぎて押し負けるため。
+
+| 押し負けの原因 | 影響 |
+|---|---|
+| `portrait` | 正面のバストショットを強く示唆する |
+| `sharp focus on eyes` | 両目が見える構図＝正面 |
+| `almond-shaped eyes, natural double eyelids` | 目の描写＝正面 |
+
+### 解決した4つの修正
+
+1. **角度を先頭に置き、強調構文で重み付け**（先頭のトークンほど強く効く）
+2. `portrait` → `photo` に変更
+3. `sharp focus on eyes` と目の描写を**削除**
+4. `looking away from camera` / `only one eye visible` を追加
+
+`only one eye visible` は横顔を出すときの決定打。
+
+### 横顔（検証済み・確実に出る）
+
+```
+(strict side profile view:1.5), photorealistic photo of a Japanese woman in her mid 20s,
+her face turned 90 degrees to the left, only one eye visible,
+adult woman, mature facial features, softly rounded face,
+short bob haircut with blunt bangs, dark brown hair,
+light warm-toned skin with natural texture, natural matte skin, minimal makeup,
+plain light gray background, soft diffused studio lighting,
+85mm lens, f/2.0, high quality
+```
+
+### 斜め45度
+
+```
+(three-quarter view from the side:1.4), photorealistic photo of a Japanese woman in her mid 20s,
+her head turned to the side, looking away from camera,
+adult woman, mature facial features, softly rounded face,
+short bob haircut with blunt bangs, dark brown hair,
+light warm-toned skin with natural texture, natural matte skin, minimal makeup,
+plain light gray background, soft diffused studio lighting,
+85mm lens, f/2.0, high quality
+```
+
+### 検証結果まとめ
+
+| カテゴリ | 状況 |
+|---|---|
+| 正面 | ✅ IP Adapter 50%（顔が最も安定する） |
+| 服違い・バストアップ | ✅ 正面用プロンプト・IP Adapter OFF |
+| 全身 | ✅ 正面用プロンプト・手の破綻なし |
+| 横顔 | ✅ 上の角度用プロンプト |
+| 斜め45度 | ✅ 上の角度用プロンプト |
+
+**輪郭が細くなる場合**は `defined jawline` を `softly rounded face` に置き換える。
+`mature facial features` だけで成人らしさは保たれる。
+
 ## 5. 採用基準（ここが本番）
 
 生成したら、1枚ずつこの4項目で判定する。**1つでも×なら捨てる。**
