@@ -26,7 +26,8 @@ POSTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "posts.jso
 # コンテナ作成から公開までMetaが推奨する待機時間(秒)
 PUBLISH_DELAY = 30
 # 親スレッド公開からリプライを付けるまでの待機時間(秒)
-REPLY_DELAY = 10
+# 10秒では公開直後にリプライを作ろうとして500が返ることがあったため延ばした
+REPLY_DELAY = 30
 # cron起動が定刻よりどれだけ遅れても同じスロットとみなすか(分)
 # GitHub Actionsのcronは混雑時に1時間前後遅れるうえ、起動自体が破棄されることもある。
 # 30分おきの起動と組み合わせて、1スロットにつき3回の機会を確保する。
@@ -34,19 +35,39 @@ REPLY_DELAY = 10
 SLOT_WINDOW_MINUTES = 90
 # 二重投稿チェックで遡る投稿数。1日6本なので4日分をカバーする
 RECENT_POSTS_LIMIT = 25
+# 送信の試行回数(初回 + 再試行)
+POST_ATTEMPTS = 4
+# 再試行の待ち時間(秒)。試行ごとにこの値ずつ延ばす
+RETRY_BACKOFF_SECONDS = 15
 
 
 def api_post(path, params):
-    """Threads Graph APIにPOSTし、JSONを返す。"""
+    """Threads Graph APIにPOSTし、JSONを返す。
+
+    Meta側が500を返すことが実際にある(本文の公開直後にリプライを作ろうとして発生)。
+    サーバー側の一時的な失敗と接続断は、間隔を空けて数回やり直す。
+    リクエスト内容が悪い4xxは、やり直しても同じなので即座に諦める。
+    """
     url = f"{API_BASE}/{path}"
     data = urllib.parse.urlencode(params).encode()
-    req = urllib.request.Request(url, data=data, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=30) as res:
-            return json.loads(res.read().decode())
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode(errors="replace")
-        raise RuntimeError(f"POST {path} failed ({e.code}): {detail}") from e
+    last = None
+    for attempt in range(1, POST_ATTEMPTS + 1):
+        req = urllib.request.Request(url, data=data, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as res:
+                return json.loads(res.read().decode())
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")
+            last = RuntimeError(f"POST {path} failed ({e.code}): {detail}")
+            if e.code < 500:
+                raise last from e
+        except urllib.error.URLError as e:
+            last = RuntimeError(f"POST {path} failed (接続エラー): {e.reason}")
+        if attempt < POST_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"  一時エラー。{wait}秒後に再試行します ({attempt}/{POST_ATTEMPTS}): {last}")
+            time.sleep(wait)
+    raise last
 
 
 def api_get(path, params):
@@ -60,26 +81,27 @@ def api_get(path, params):
         raise RuntimeError(f"GET {path} failed ({e.code}): {detail}") from e
 
 
-def already_posted(token, body):
-    """同じ本文が直近の投稿に既にあるか調べる。
+def find_posted(token, texts):
+    """与えたテキストが直近の投稿に既にあるかを調べ、あればそのIDを返す。
 
-    cronの取りこぼしに備えて起動回数を増やしている都合上、
-    ひとつのスロットを複数の起動が拾いうる。実際に送る前にここで弾く。
+    起動回数を増やしている都合上、ひとつのスロットを複数の起動が拾いうるので、
+    送る前にここで弾く。本文とコメント欄を別々に見るのは、本文だけ通って
+    コメント欄が失敗した状態から再開できるようにするため。
 
     APIの照合自体に失敗した場合は例外を送出し、送信前に中断する。
     重複投稿より、1回見送って次の起動に任せる方が安全なため。
     """
-    target = "".join(body.split())
     res = api_get("me/threads", {
-        "fields": "text",
+        "fields": "id,text",
         "limit": RECENT_POSTS_LIMIT,
         "access_token": token,
     })
+    seen = {}
     for item in res.get("data", []):
         text = item.get("text")
-        if text and "".join(text.split()) == target:
-            return True
-    return False
+        if text:
+            seen.setdefault("".join(text.split()), item.get("id"))
+    return [seen.get("".join(t.split())) for t in texts]
 
 
 def publish_text(token, text, reply_to_id=None):
@@ -172,13 +194,18 @@ def main():
         print(f"[コメント欄 {len(post['comment'])}字]\n{post['comment']}")
         return
 
-    if already_posted(token, post["body"]):
+    parent_id, comment_id = find_posted(token, [post["body"], post["comment"]])
+
+    if parent_id and comment_id:
         print(f"  No.{entry['post_id']} は投稿済みです。二重投稿を避けて終了します。")
         return
 
-    parent_id = publish_text(token, post["body"])
-
-    time.sleep(REPLY_DELAY)
+    if parent_id:
+        # 前回の起動で本文だけ通り、コメント欄が失敗した状態。続きから再開する。
+        print("  本文は投稿済みです。コメント欄だけ投稿します。")
+    else:
+        parent_id = publish_text(token, post["body"])
+        time.sleep(REPLY_DELAY)
 
     print("  コメント欄をリプライとして投稿します")
     publish_text(token, post["comment"], reply_to_id=parent_id)
