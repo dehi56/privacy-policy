@@ -48,7 +48,7 @@ REPLY_DELAY = 30
 # 30分おきの起動と組み合わせて、1スロットにつき3回の機会を確保する。
 # 隣り合うスロットの最短間隔(2時間)より短くして、別スロットに寄らないようにする。
 SLOT_WINDOW_MINUTES = 90
-# 二重投稿チェックで遡る投稿数。1日6本なので4日分をカバーする
+# 二重投稿チェックで遡る投稿数。1日7本なので3日分強をカバーする
 RECENT_POSTS_LIMIT = 25
 # 送信の試行回数(初回 + 再試行)
 POST_ATTEMPTS = 4
@@ -201,7 +201,7 @@ def current_slot():
         return date_part, time_part
 
     now = datetime.now(JST)
-    slots = ["00:00", "10:00", "12:00", "15:00", "18:00", "21:00"]
+    slots = ["00:00", "06:00", "10:00", "12:00", "15:00", "18:00", "21:00"]
     best = None
     for slot in slots:
         hh, mm = (int(x) for x in slot.split(":"))
